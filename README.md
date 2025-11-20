@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ICT Helpdesk System
 
 A modern web-based helpdesk ticketing system for ICT support, built with Flask, SQLAlchemy, Flask-Login, Flask-Mail, and MySQL.
@@ -79,3 +80,7 @@ MIT License
 
 ---
 For any issues, open an issue or pull request on GitHub.
+=======
+# HelpTicketSystem-v2
+ICT HELPDESK SYSTEM VERSION 2
+>>>>>>> 264630cd3711f843515cc0d3c301611f422b2b82
