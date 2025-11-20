@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - ICT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users me-2"></i>User Management</h2>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+
+<div class="row">
+    <!-- Users List -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">System Users</h5>
+                <div>
+                    <span class="badge bg-success me-2">Active: {{ users|selectattr('is_active')|list|length }}</span>
+                    <span class="badge bg-secondary">Inactive: {{ users|rejectattr('is_active')|list|length }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.full_name }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if user.role == 'admin' else 'warning' if user.role == 'intern' else 'secondary' }}">
+                                        {{ user.role.title() }}
+                                    </span>
+                                </td>
+                                <td>{{ user.created_at|format_datetime }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if user.is_active else 'secondary' }}">
+                                        {{ 'Active' if user.is_active else 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-warning" 
+                                                onclick="showPasswordModal({{ user.id }}, '{{ user.full_name }}')" 
+                                                title="Change Password">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                        {% if user.id != current_user.id %}
+                                        <form method="POST" action="{{ url_for('toggle_user_status', user_id=user.id) }}" style="display: inline;" 
+                                              onsubmit="return confirm('Are you sure you want to {{ 'deactivate' if user.is_active else 'activate' }} {{ user.full_name }}?')">
+                                            {{ status_form.hidden_tag() }}
+                                            <button type="submit" class="btn btn-sm btn-outline-{{ 'danger' if user.is_active else 'success' }}" 
+                                                    title="{{ 'Deactivate' if user.is_active else 'Activate' }} User">
+                                                <i class="fas fa-{{ 'ban' if user.is_active else 'check' }}"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" style="display: inline;" 
+                                              onsubmit="return confirm('Are you sure you want to delete {{ user.full_name }}? This action cannot be undone.')">
+                                            {{ status_form.hidden_tag() }}
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Delete User">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add New User -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Add New User</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('create_user') }}">
+                    {{ admin_user_form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ admin_user_form.username.label(class="form-label") }}
+                        {{ admin_user_form.username(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ admin_user_form.email.label(class="form-label") }}
+                        {{ admin_user_form.email(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ admin_user_form.full_name.label(class="form-label") }}
+                        {{ admin_user_form.full_name(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ admin_user_form.password.label(class="form-label") }}
+                        {{ admin_user_form.password(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ admin_user_form.role.label(class="form-label") }}
+                        {{ admin_user_form.role(class="form-control") }}
+                    </div>
+
+                    <div class="d-grid">
+                        {{ admin_user_form.submit(class="btn btn-success") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+<!-- Password Update Modal -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_user_password') }}">
+                {{ form.hidden_tag() }}
+                <div class="modal-body">
+                    <p>Update password for: <strong id="userName"></strong></p>
+
+                    {{ form.user_id(type="hidden", id="userId") }}
+
+                    <div class="mb-3">
+                        {{ form.new_password.label(class="form-label") }}
+                        {{ form.new_password(class="form-control") }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.confirm_password.label(class="form-label") }}
+                        {{ form.confirm_password(class="form-control") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ form.submit(class="btn btn-warning") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showPasswordModal(userId, userName) {
+    document.getElementById('userId').value = userId;
+    document.getElementById('userName').textContent = userName;
+    new bootstrap.Modal(document.getElementById('passwordModal')).show();
+}
+</script>
+{% endblock %}

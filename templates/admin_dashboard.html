@@ -1,0 +1,859 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - ICT Helpdesk{% endblock %}
+
+{% block content %}
+<!-- Pending Approvals Alert -->
+{% if pending_interns_count > 0 %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <strong>{{ pending_interns_count }}</strong> intern{{ 's' if pending_interns_count != 1 else '' }} waiting for approval.
+    <a href="{{ url_for('pending_users') }}" class="alert-link">Review now</a>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Enhanced Header with Gradient Background -->
+<div class="admin-header mb-4">
+    <div class="d-flex justify-content-between align-items-center w-100">
+        <div class="admin-header-content">
+            <h2 class="admin-title">
+                <i class="fas fa-crown me-2 text-warning"></i>
+                Admin Control Center
+            </h2>
+            <p class="admin-subtitle mb-0">System overview and management tools</p>
+        </div>
+        <div class="admin-actions">
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle admin-toggle-btn" type="button" id="adminActionsDropdown" 
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-cog me-1"></i>Quick Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end admin-actions-dropdown" aria-labelledby="adminActionsDropdown">
+                    <li><h6 class="dropdown-header"><i class="fas fa-chart-bar me-2"></i>Reports & Analytics</h6></li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('reports') }}">
+                            <i class="fas fa-chart-line me-2 text-info"></i>View Reports
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    
+                    <li><h6 class="dropdown-header"><i class="fas fa-users me-2"></i>User Management</h6></li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('user_management') }}">
+                            <i class="fas fa-users-cog me-2 text-warning"></i>All Users
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('intern_management') }}">
+                            <i class="fas fa-user-graduate me-2 text-primary"></i>Intern Management
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('staff_management') }}">
+                            <i class="fas fa-user-tie me-2 text-success"></i>Staff Management
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    
+                    <li><h6 class="dropdown-header"><i class="fas fa-ticket-alt me-2"></i>Ticket Management</h6></li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('tickets_list') }}">
+                            <i class="fas fa-list-ul me-2 text-secondary"></i>All Tickets
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('tickets_list', status='open') }}">
+                            <i class="fas fa-clock me-2 text-warning"></i>Open Tickets
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('tickets_list', priority='urgent') }}">
+                            <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Urgent Tickets
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    
+                    <li>
+                        <a class="dropdown-item highlight-item" href="{{ url_for('new_ticket') }}">
+                            <i class="fas fa-plus-circle me-2 text-primary"></i>Create New Ticket
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Status Banner -->
+<div class="status-banner mb-4">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <div class="status-item">
+                <i class="fas fa-server text-success"></i>
+                <span class="status-text">System Online</span>
+                <div class="status-indicator online"></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="status-item">
+                <i class="fas fa-database text-info"></i>
+                <span class="status-text">Database Active</span>
+                <div class="status-indicator online"></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="status-item">
+                <i class="fas fa-users text-primary"></i>
+                <span class="status-text">{{ stats.total_users }} Users</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="status-item">
+                <i class="fas fa-clock text-warning"></i>
+                <span class="status-text" id="current-time"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Statistics Cards with Animations -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list') }}" class="text-decoration-none">
+            <div class="stats-card card-primary clickable-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-target="{{ stats.total_tickets }}">0</h3>
+                        <p class="stats-label">Total Tickets</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='open') }}" class="text-decoration-none">
+            <div class="stats-card card-warning clickable-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-target="{{ stats.open_tickets }}">0</h3>
+                        <p class="stats-label">Open Tickets</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ (stats.open_tickets / stats.total_tickets * 100) if stats.total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='in_progress') }}" class="text-decoration-none">
+            <div class="stats-card card-info clickable-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-target="{{ stats.in_progress_tickets }}">0</h3>
+                        <p class="stats-label">In Progress</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ (stats.in_progress_tickets / stats.total_tickets * 100) if stats.total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='closed') }}" class="text-decoration-none">
+            <div class="stats-card card-success clickable-card" data-aos="fade-up" data-aos-delay="400">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-target="{{ stats.closed_tickets }}">0</h3>
+                        <p class="stats-label">Closed</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ (stats.closed_tickets / stats.total_tickets * 100) if stats.total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Quick Actions Panel -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card quick-actions-card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('new_ticket') }}" class="quick-action-btn">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Create Ticket</span>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('user_management') }}" class="quick-action-btn">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Add User</span>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('reports') }}" class="quick-action-btn">
+                            <i class="fas fa-download"></i>
+                            <span>Export Report</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card priority-alerts">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Priority Alerts
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert-item">
+                    <div class="alert-icon urgent">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div class="alert-content">
+                        <span class="alert-number">{{ stats.urgent_tickets }}</span>
+                        <span class="alert-label">Urgent Tickets</span>
+                    </div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-icon overdue">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="alert-content">
+                        <span class="alert-number">0</span>
+                        <span class="alert-label">Overdue Tasks</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Management Sections -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card team-performance">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2 text-info"></i>Team Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for role_stat in user_stats %}
+                <div class="team-member-row">
+                    <div class="team-role">
+                        <span class="role-badge role-{{ role_stat.role }}">
+                            {% if role_stat.role == 'admin' %}
+                                <i class="fas fa-crown"></i>
+                            {% elif role_stat.role == 'intern' %}
+                                <i class="fas fa-user-graduate"></i>
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
+                            {{ role_stat.role.title() }}s
+                        </span>
+                    </div>
+                    <div class="team-count">
+                        <span class="count-number">{{ role_stat.count }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card category-management">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-tags me-2 text-warning"></i>Categories
+                </h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                    <i class="fas fa-plus me-1"></i>Add
+                </button>
+            </div>
+            <div class="card-body">
+                {% if categories %}
+                    <div class="category-list" style="max-height: 300px; overflow-y: auto;">
+                        {% for category in categories %}
+                        <div class="category-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                            <div>
+                                <strong class="category-name">{{ category.name }}</strong>
+                                {% if category.description %}
+                                    <br><small class="text-muted category-desc">{{ category.description[:50] }}{% if category.description|length > 50 %}...{% endif %}</small>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ category.tickets.count() }} tickets</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-folder-open fa-2x mb-2 opacity-50"></i>
+                        <p class="mb-0">No categories created yet.</p>
+                        <small>Click "Add" to create your first category.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card system-health">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-heart me-2 text-danger"></i>System Health
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="health-metric">
+                    <div class="metric-label">Response Time</div>
+                    <div class="metric-value">
+                        <span class="value-number">0.8s</span>
+                        <div class="metric-bar">
+                            <div class="metric-fill" style="width: 85%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="health-metric">
+                    <div class="metric-label">Uptime</div>
+                    <div class="metric-value">
+                        <span class="value-number">99.9%</span>
+                        <div class="metric-bar">
+                            <div class="metric-fill" style="width: 99%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="health-metric">
+                    <div class="metric-label">Database Health</div>
+                    <div class="metric-value">
+                        <span class="value-number">Good</span>
+                        <div class="metric-bar">
+                            <div class="metric-fill" style="width: 90%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-tags me-2"></i>Add New Category
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_category') }}">
+                {{ category_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ category_form.name.label(class="form-label") }}
+                        {{ category_form.name(class="form-control", placeholder="e.g., Hardware Issues") }}
+                        <div class="form-text">Enter a descriptive name for the category</div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ category_form.description.label(class="form-label") }}
+                        {{ category_form.description(class="form-control", placeholder="Brief description of this category", rows="3") }}
+                        <div class="form-text">Optional: Provide additional details about this category</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ category_form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="btn-group" role="group">
+                        <a href="{{ url_for('intern_management') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-user-graduate me-2"></i>Intern Management
+                        </a>
+                        <a href="{{ url_for('staff_management') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-user-tie me-2"></i>Staff Management
+                        </a>
+                        <a href="{{ url_for('user_management') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-users me-2"></i>All Users
+                        </a>
+                    </div>
+
+<style>
+/* Admin Dashboard Custom Styles */
+.admin-header {
+    background: linear-gradient(135deg, #b1dbee 0%, #6074e6 100%);
+    color: white;
+    padding: 2rem;
+    height: 50px;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+}
+
+.admin-title {
+    font-size: 2rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+}
+
+.admin-subtitle {
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+.btn-pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+}
+
+/* Status Banner */
+.status-banner {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: auto;
+}
+
+.status-indicator.online {
+    background: #22c55e;
+    animation: blink 2s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+/* Enhanced Stats Cards */
+.stats-card {
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: white;
+    cursor: pointer;
+}
+
+.stats-card:hover,
+.clickable-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+}
+
+.clickable-card {
+    position: relative;
+}
+
+.clickable-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.clickable-card:hover::after {
+    opacity: 1;
+}
+
+.clickable-card:active {
+    transform: translateY(-4px);
+    transition: transform 0.1s ease;
+}
+
+.stats-card.card-primary { border-left: 4px solid #007bff; }
+.stats-card.card-warning { border-left: 4px solid #ffc107; }
+.stats-card.card-info { border-left: 4px solid #17a2b8; }
+.stats-card.card-success { border-left: 4px solid #28a745; }
+
+.stats-card .card-body {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+}
+
+.stats-icon {
+    font-size: 2.5rem;
+    margin-right: 1rem;
+    opacity: 0.8;
+}
+
+.stats-content {
+    flex: 1;
+}
+
+.stats-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0;
+    color: #333;
+}
+
+.stats-label {
+    color: #666;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.stats-progress {
+    margin-top: 0.5rem;
+    height: 4px;
+    background: #f0f0f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 1s ease;
+}
+
+/* Quick Actions */
+.quick-actions-card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+}
+
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.quick-action-btn:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+    color: #007bff;
+}
+
+.quick-action-btn i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Priority Alerts */
+.priority-alerts {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.alert-item:last-child {
+    border-bottom: none;
+}
+
+.alert-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+}
+
+.alert-icon.urgent {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.alert-icon.overdue {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.alert-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    display: block;
+}
+
+.alert-label {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+/* Team Performance */
+.team-performance, .system-health {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+}
+
+.team-member-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.team-member-row:last-child {
+    border-bottom: none;
+}
+
+.role-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.role-badge.role-admin {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.role-badge.role-intern {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.role-badge.role-user {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.count-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+}
+
+/* System Health Metrics */
+.health-metric {
+    margin-bottom: 1.5rem;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.value-number {
+    font-weight: bold;
+    min-width: 60px;
+}
+
+.metric-bar {
+    flex: 1;
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metric-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    transition: width 1s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .stats-card .card-body {
+        padding: 1.25rem;
+    }
+
+    .stats-number {
+        font-size: 1.75rem;
+    }
+
+    .stats-icon {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .admin-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .btn-group {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-header {
+        padding: 1.5rem;
+    }
+
+    .admin-title {
+        font-size: 1.5rem;
+    }
+
+    .admin-actions {
+        margin-top: 1rem;
+        width: 100%;
+    }
+
+    .btn-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .stats-card .card-body {
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stats-icon {
+        font-size: 1.75rem;
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-number {
+        font-size: 1.5rem;
+    }
+
+    .stats-label {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .stats-card .card-body {
+        display: block;
+        text-align: center;
+        padding: 0.75rem;
+    }
+
+    .stats-icon {
+        display: block;
+        margin: 0 auto 0.5rem;
+        font-size: 1.5rem;
+    }
+
+    .stats-number {
+        font-size: 1.25rem;
+    }
+
+    .admin-header .d-flex {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .admin-actions {
+        margin-top: 1rem;
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+// Real-time clock
+function updateTime() {
+    const now = new Date();
+    document.getElementById('current-time').textContent = now.toLocaleTimeString();
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+// Animated counter
+function animateCounter(element, target) {
+    let current = 0;
+    const increment = target / 50;
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+            current = target;
+            clearInterval(timer);
+        }
+        element.textContent = Math.floor(current);
+    }, 30);
+}
+
+// Initialize counters
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.stats-number').forEach(element => {
+        const target = parseInt(element.getAttribute('data-target'));
+        animateCounter(element, target);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,918 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - ICT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-chart-line me-2"></i>Reports & Analytics</h2>
+    <div class="btn-group">
+        <button onclick="window.print()" class="btn btn-outline-primary">
+            <i class="fas fa-print me-2"></i>Print Report
+        </button>
+        <a href="{{ url_for('tickets_list') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-list me-2"></i>View All Tickets
+        </a>
+    </div>
+</div>
+
+<!-- Date Range and Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Report Filters</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('reports') }}" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Date Range</label>
+                <select name="date_range" class="form-control" title="Date Range">
+                    <option value="daily" {% if request.args.get('date_range') == 'daily' %}selected{% endif %}>Last 24 Hours</option>
+                    <option value="weekly" {% if request.args.get('date_range') == 'weekly' %}selected{% endif %}>Last 7 Days</option>
+                    <option value="monthly" {% if request.args.get('date_range') == 'monthly' %}selected{% endif %}>Last 30 Days</option>
+                    <option value="yearly" {% if request.args.get('date_range') == 'yearly' %}selected{% endif %}>Last Year</option>
+                    <option value="all" {% if request.args.get('date_range') == 'all' or not request.args.get('date_range') %}selected{% endif %}>All Time</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Custom Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}" placeholder="Select start date" title="Custom Start Date">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Custom End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}" placeholder="Select end date" title="Custom End Date">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control" title="Status">
+                    <option value="">All Statuses</option>
+                    <option value="open" {% if request.args.get('status') == 'open' %}selected{% endif %}>Open</option>
+                    <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>Resolved</option>
+                    <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>Closed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Priority</label>
+                <select name="priority" class="form-control" title="Priority">
+                    <option value="">All Priorities</option>
+                    <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low</option>
+                    <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>High</option>
+                    <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>Urgent</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="btn-group w-100">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Apply Filters
+                    </button>
+                    <a href="{{ url_for('reports') }}" class="btn btn-outline-secondary" title="Clear Filters" aria-label="Clear Filters">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Statistics Cards with Clickable Functionality -->
+<div class="row mb-4">
+    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list') }}" class="text-decoration-none">
+            <div class="stats-card card-primary clickable-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-stat="total-tickets">{{ total_tickets|default(0) }}</h3>
+                        <p class="stats-label">Total Tickets</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='open') }}" class="text-decoration-none">
+            <div class="stats-card card-warning clickable-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-stat="open-tickets">{{ open_tickets|default(0) }}</h3>
+                        <p class="stats-label">Open</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: '{{ (open_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%'"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='in_progress') }}" class="text-decoration-none">
+            <div class="stats-card card-info clickable-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-stat="in-progress-tickets">{{ in_progress_tickets|default(0) }}</h3>
+                        <p class="stats-label">In Progress</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ (in_progress_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='resolved') }}" class="text-decoration-none">
+            <div class="stats-card card-success clickable-card" data-aos="fade-up" data-aos-delay="400">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-stat="resolved-tickets">{{ resolved_tickets|default(0) }}</h3>
+                        <p class="stats-label">Resolved</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ (resolved_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', status='closed') }}" class="text-decoration-none">
+            <div class="stats-card card-secondary clickable-card" data-aos="fade-up" data-aos-delay="500">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-stat="closed-tickets">{{ closed_tickets|default(0) }}</h3>
+                        <p class="stats-label">Closed</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ (closed_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+        <a href="{{ url_for('tickets_list', priority='urgent') }}" class="text-decoration-none">
+            <div class="stats-card card-danger clickable-card" data-aos="fade-up" data-aos-delay="600">
+                <div class="card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3 class="stats-number" data-stat="overdue-tickets">{{ overdue_tickets|length if overdue_tickets else 0 }}</h3>
+                        <p class="stats-label">Overdue</p>
+                        <div class="stats-progress">
+                            <div class="progress-bar" style="width: {{ ((overdue_tickets|length if overdue_tickets else 0) / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Average Resolution Time Card -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h2 class="text-primary mb-2" id="avg-resolution-time">
+                    {% if avg_resolution_time %}
+                        {{ "%.1f"|format(avg_resolution_time) }} hours
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </h2>
+                <p class="mb-0">
+                    <strong>Average Resolution Time</strong><br>
+                    <small class="text-muted">Based on {{ resolved_tickets + closed_tickets }} resolved/closed tickets</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Priority Distribution Chart -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Priority Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="priority-stats">
+                    <div class="priority-item" data-priority="urgent">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-danger">Urgent</span>
+                            <span class="fw-bold">{{ priority_counts.urgent if priority_counts else 0 }}</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-danger" style="width: {{ (priority_counts.urgent / total_tickets * 100) if total_tickets > 0 and priority_counts else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="priority-item" data-priority="high">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-warning">High</span>
+                            <span class="fw-bold">{{ priority_counts.high if priority_counts else 0 }}</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: {{ (priority_counts.high / total_tickets * 100) if total_tickets > 0 and priority_counts else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="priority-item" data-priority="medium">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-info">Medium</span>
+                            <span class="fw-bold">{{ priority_counts.medium if priority_counts else 0 }}</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: {{ (priority_counts.medium / total_tickets * 100) if total_tickets > 0 and priority_counts else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="priority-item" data-priority="low">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-success">Low</span>
+                            <span class="fw-bold">{{ priority_counts.low if priority_counts else 0 }}</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: {{ (priority_counts.low / total_tickets * 100) if total_tickets > 0 and priority_counts else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Status Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="status-overview">
+                    <div class="status-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Open Tickets</span>
+                            <span class="badge bg-warning">{{ open_tickets }}</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: {{ (open_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="status-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>In Progress</span>
+                            <span class="badge bg-info">{{ in_progress_tickets }}</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-info" style="width: {{ (in_progress_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="status-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Resolved</span>
+                            <span class="badge bg-success">{{ resolved_tickets }}</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: {{ (resolved_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Closed</span>
+                            <span class="badge bg-secondary">{{ closed_tickets }}</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-secondary" style="width: {{ (closed_tickets / total_tickets * 100) if total_tickets > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket Summary Report Table -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Ticket Summary Report</h5>
+                <div class="btn-group">
+                    <button onclick="exportTableToCSV('ticket-summary-table', 'ticket_summary_report.csv')" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-download me-1"></i>Export CSV
+                    </button>
+                    <button onclick="printTicketSummary()" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-print me-1"></i>Print
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if tickets %}
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Showing {{ tickets|length }} tickets for the selected period ({{ start_date }} to {{ end_date }})
+                        <br>
+                        Debug: Total={{ total_tickets }}, Open={{ open_tickets }}, In Progress={{ in_progress_tickets }}, Resolved={{ resolved_tickets }}, Closed={{ closed_tickets }}
+                    </small>
+                </div>
+                <div class="table-responsive">
+                    <table id="ticket-summary-table" class="table table-hover table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 120px;">Date Created</th>
+                                <th style="width: 150px;">Department/Location</th>
+                                <th style="width: 120px;">Category</th>
+                                <th style="width: 100px;">Priority</th>
+                                <th style="width: 100px;">Status</th>
+                                <th style="width: 150px;">Technician(s)</th>
+                                <th style="width: 120px;">Time to Resolve</th>
+                                <th style="width: 200px;">Description</th>
+                                <th style="width: 80px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ticket in tickets %}
+                            <tr class="clickable-row" onclick="window.location.href='{{ url_for('ticket_detail', id=ticket.id) }}'">
+                                <td>
+                                    <small>{{ ticket.created_at.strftime('%Y-%m-%d') }}<br>{{ ticket.created_at.strftime('%H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <span class="text-truncate d-inline-block" style="max-width: 140px;" title="{{ ticket.location }}">
+                                        {{ ticket.location }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if ticket.category %}
+                                        <small class="badge bg-secondary">{{ ticket.category.name }}</small>
+                                    {% else %}
+                                        <small class="text-muted">No Category</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if ticket.priority == 'urgent' %}bg-danger
+                                        {% elif ticket.priority == 'high' %}bg-warning
+                                        {% elif ticket.priority == 'medium' %}bg-info
+                                        {% else %}bg-success{% endif %}">
+                                        {{ ticket.priority.title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if ticket.status == 'open' %}bg-warning
+                                        {% elif ticket.status == 'in_progress' %}bg-info
+                                        {% elif ticket.status == 'resolved' %}bg-success
+                                        {% elif ticket.status == 'closed' %}bg-secondary
+                                        {% else %}bg-light text-dark{% endif %}">
+                                        {{ ticket.status.replace('_', ' ').title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if ticket.assignees %}
+                                        {% for assignee in ticket.assignees %}
+                                            <small class="badge bg-primary me-1">{{ assignee.full_name }}</small>
+                                            {% if not loop.last %}<br>{% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <small class="text-muted">Unassigned</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ticket.status in ['resolved', 'closed'] and ticket.closed_at %}
+                                        {% set resolution_hours = ((ticket.closed_at - ticket.created_at).total_seconds() / 3600) | round(1) %}
+                                        {% if resolution_hours < 24 %}
+                                            <span class="text-success">{{ resolution_hours }}h</span>
+                                        {% elif resolution_hours < 48 %}
+                                            <span class="text-warning">{{ (resolution_hours / 24) | round(1) }}d</span>
+                                        {% else %}
+                                            <span class="text-danger">{{ (resolution_hours / 24) | round(1) }}d</span>
+                                        {% endif %}
+                                    {% elif ticket.due_date and ticket.status not in ['resolved', 'closed'] %}
+                                        {% set current_hours = ((now() - ticket.created_at).total_seconds() / 3600) | round(1) %}
+                                        {% if current_hours > 48 %}
+                                            <span class="text-danger">{{ (current_hours / 24) | round(1) }}d (Overdue)</span>
+                                        {% else %}
+                                            <span class="text-info">{{ current_hours }}h (In Progress)</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-truncate d-inline-block" style="max-width: 180px;" title="{{ ticket.description }}">
+                                        {{ ticket.description[:100] + '...' if ticket.description|length > 100 else ticket.description }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <a href="{{ url_for('ticket_detail', id=ticket.id) }}" 
+                                           class="btn btn-outline-primary btn-sm" 
+                                           onclick="event.stopPropagation()" 
+                                           title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if ticket.status == 'closed' %}
+                                        <a href="{{ url_for('print_ticket', id=ticket.id) }}" 
+                                           class="btn btn-outline-secondary btn-sm" 
+                                           onclick="event.stopPropagation()" 
+                                           title="Print Report" 
+                                           target="_blank">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary Statistics -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <div class="row text-center">
+                                <div class="col-md-2">
+                                    <strong>{{ tickets|length }}</strong><br>
+                                    <small>Total Tickets</small>
+                                </div>
+                                <div class="col-md-2">
+                                    <strong>{{ tickets|selectattr("status", "equalto", "resolved")|list|length + tickets|selectattr("status", "equalto", "closed")|list|length }}</strong><br>
+                                    <small>Resolved/Closed</small>
+                                </div>
+                                <div class="col-md-2">
+                                    {% set avg_resolution = [] %}
+                                    {% for ticket in tickets %}
+                                        {% if ticket.status in ['resolved', 'closed'] and ticket.closed_at %}
+                                            {% set _ = avg_resolution.append((ticket.closed_at - ticket.created_at).total_seconds() / 3600) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <strong>{{ (avg_resolution|sum / avg_resolution|length)|round(1) if avg_resolution else 0 }}h</strong><br>
+                                    <small>Avg Resolution</small>
+                                </div>
+                                <div class="col-md-2">
+                                    <strong>{{ tickets|selectattr("priority", "equalto", "urgent")|list|length }}</strong><br>
+                                    <small>Urgent Priority</small>
+                                </div>
+                                <div class="col-md-2">
+                                    {% set overdue_count = 0 %}
+                                    {% for ticket in tickets %}
+                                        {% if ticket.due_date and ticket.status not in ['resolved', 'closed'] and ticket.due_date < now() %}
+                                            {% set overdue_count = overdue_count + 1 %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <strong class="text-danger">{{ overdue_count }}</strong><br>
+                                    <small>Overdue</small>
+                                </div>
+                                <div class="col-md-2">
+                                    <strong>{{ tickets|selectattr("assignees")|list|length }}</strong><br>
+                                    <small>Assigned</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Tickets Found</h5>
+                    <p class="text-muted">No tickets match the selected criteria for the specified date range.</p>
+                    <a href="{{ url_for('reports') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-refresh me-2"></i>Reset Filters
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timestamp Display -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <p>Report generated at: <span id="timestamp"></span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this where the report content is rendered -->
+<div id="report-content">
+    <!-- Existing report content -->
+</div>
+
+<style>
+/* Reports Page Custom Styles */
+.stats-card {
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: white;
+    cursor: pointer;
+    position: relative;
+}
+
+.stats-card:hover,
+.clickable-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+}
+
+.clickable-card {
+    position: relative;
+}
+
+.clickable-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.clickable-card:hover::after {
+    opacity: 1;
+}
+
+.clickable-card:active {
+    transform: translateY(-4px);
+    transition: transform 0.1s ease;
+}
+
+.stats-card.card-primary { border-left: 4px solid #007bff; }
+.stats-card.card-warning { border-left: 4px solid #ffc107; }
+.stats-card.card-info { border-left: 4px solid #17a2b8; }
+.stats-card.card-success { border-left: 4px solid #28a745; }
+.stats-card.card-secondary { border-left: 4px solid #6c757d; }
+.stats-card.card-danger { border-left: 4px solid #dc3545; }
+
+.stats-card .card-body {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+}
+
+.stats-icon {
+    font-size: 2.5rem;
+    margin-right: 1rem;
+    opacity: 0.8;
+}
+
+.stats-content {
+    flex: 1;
+}
+
+.stats-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0;
+    color: #333;
+}
+
+.stats-label {
+    color: #666;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.stats-progress {
+    margin-top: 0.5rem;
+    height: 4px;
+    background: #f0f0f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 1s ease;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+    background-color: #f8f9fa;
+}
+
+.priority-stats .priority-item {
+    margin-bottom: 1rem;
+}
+
+.status-overview .status-item {
+    margin-bottom: 1rem;
+}
+
+/* Print styles */
+@media print {
+    .btn, .navbar, .card-header .btn-group {         display: none !important; 
+    }
+    .card { 
+        border: 1px solid #000 !important; 
+        margin-bottom: 20px; 
+        break-inside: avoid;
+    }
+    body { 
+        font-size: 12px; 
+    }
+    .stats-card:hover,
+    .clickable-card:hover {
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .stats-card .card-body {
+        padding: 1.25rem;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .stats-icon {
+        font-size: 2rem;
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-number {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-card .card-body {
+        padding: 1rem;
+    }
+
+    .stats-icon {
+        font-size: 1.75rem;
+    }
+
+    .stats-number {
+        font-size: 1.5rem;
+    }
+
+    .stats-label {
+        font-size: 0.8rem;
+    }
+
+    .clickable-row {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .col-xl-2 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    .stats-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .stats-icon {
+        font-size: 1.5rem;
+    }
+
+    .stats-number {
+        font-size: 1.25rem;
+    }
+}
+</style>
+
+<script>
+function printTicketSummary() {
+    // Get the ticket summary table
+    const table = document.getElementById('ticket-summary-table');
+    const tableContainer = table.closest('.table-responsive');
+
+    if (!table) {
+        alert('Table not found for printing');
+        return;
+        }
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+
+    // Build the print content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Ticket Summary Report - ${new Date().toLocaleDateString()}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                    color: #333;
+                    font-size: 12px;
+                }
+
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 20px;
+                }
+
+                .print-header h1 {
+                    margin: 0;
+                    color: #2c3e50;
+                    font-size: 24px;
+                }
+
+                .print-header p {
+                    margin: 5px 0;
+                    color: #666;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                    font-size: 10px;
+                }
+
+                th, td {
+                    border: 1px solid #000;
+                    padding: 8px 4px;
+                    text-align: left;
+                    vertical-align: top;
+                }
+
+                th {
+                    background-color: #f8f9fa;
+                    font-weight: bold;
+                    color: #000;
+                }
+
+                tr:nth-child(even) {
+                    background-color: #f9f9f9;
+                }
+
+                .badge {
+                    display: inline-block;
+                    padding: 2px 6px;
+                    font-size: 9px;
+                    font-weight: bold;
+                    border-radius: 3px;
+                    color: #000;
+                    background-color: #e9ecef;
+                    border: 1px solid #000;
+                }
+
+                .text-truncate {
+                    max-width: 150px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .print-footer {
+                    margin-top: 30px;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #666;
+                    border-top: 1px solid #ddd;
+                    padding-top: 15px;
+                }
+
+                @media print {
+                    body { margin: 0; }
+                    .print-header, .print-footer { break-inside: avoid; }
+                    table { break-inside: auto; }
+                    tr { break-inside: avoid; break-after: auto; }
+                    th { break-after: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <h1>ICT Helpdesk - Ticket Summary Report</h1>
+                <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                <p><strong>Period:</strong> {{ start_date }} to {{ end_date }}</p>
+                <p><strong>Total Tickets:</strong> {{ tickets|length }}</p>
+            </div>
+
+            <div class="table-container">
+                ${getTableHTML(table)}
+            </div>
+
+            <div class="print-footer">
+                <p>ICT Helpdesk System - Ticket Summary Report</p>
+                <p>This is a system-generated report containing {{ tickets|length }} tickets for the specified period</p>
+            </div>
+        </body>
+        </html>
+    `;
+
+    // Write content to print window
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+
+    // Wait for content to load then print
+    printWindow.onload = function() {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    };
+}
+
+function getTableHTML(table) {
+    // Clone the table
+    const tableClone = table.cloneNode(true);
+
+    // Remove action columns from the cloned table (now the last column since ticket ID is hidden)
+    const actionCells = tableClone.querySelectorAll('th:last-child, td:last-child');
+    actionCells.forEach(cell => cell.remove());
+
+    // Clean up any onclick attributes
+    const rows = tableClone.querySelectorAll('tr');
+    rows.forEach(row => {
+        row.removeAttribute('onclick');
+        row.classList.remove('clickable-row');
+    });
+
+    // Convert badges to plain text for better printing
+    const badges = tableClone.querySelectorAll('.badge');
+    badges.forEach(badge => {
+        badge.style.backgroundColor = '#e9ecef';
+        badge.style.color = '#000';
+        badge.style.border = '1px solid #000';
+    });
+
+    return tableClone.outerHTML;
+}
+
+// CSV Export function (keeping existing functionality)
+function exportTableToCSV(tableId, filename) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = [];
+        const cols = rows[i].querySelectorAll('td, th');
+
+        for (let j = 0; j < cols.length - 1; j++) { // Exclude last column (actions)
+            let cellText = cols[j].innerText.trim();
+            // Clean up text and escape quotes
+            cellText = cellText.replace(/"/g, '""');
+            row.push('"' + cellText + '"');
+        }
+        csv.push(row.join(','));
+    }
+
+    // Download CSV
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}
